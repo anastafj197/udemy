@@ -4,7 +4,7 @@ app = Flask(__name__)
 
 stores = [
 	{
-		'name'  : 'My wonderful Store',
+		'name'  : 'My Wonderful Store',
 		'items' : [
 			{
 			'name'  : 'My Item',
@@ -14,6 +14,9 @@ stores = [
 	}
 ]
 
+# render html 
+# Not something you want to do for a Flask REST API 
+# Is  something you want to do for a Flask Web Application  
 @app.route('/')
 def home():
 	return render_template('index.html')
