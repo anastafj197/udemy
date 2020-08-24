@@ -33,6 +33,12 @@ class Item(Resource):
 		items.append(item)
 		return item, 201
 
+	def delete(self, name):
+		global items
+		# the DB items = result of lambda -> loop through items add every entry where item's name is not = to the name passed in 
+		items = list(filter(lambda x: x['name'] != name, items))
+		return {'message': 'Item deleted'}
+
 
 class ItemList(Resource):
 	def get(self):
