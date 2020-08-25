@@ -12,27 +12,25 @@ class Item(Resource):
 
 	@jwt_required()
 	def get(self, name):
-		connection = sqlite3.connect('data.db')
-		cursor = connection.cursor()
-
-		query = "SELECT * FROM items WHERE name=?"
-		result = cursor.execute(query, (name,))
-		row = result.fetchone()
-		connection.close()
-
-		if row: 
-			return {'item': {'name': row[0], 'price': row[1]}}
+		item = self.find_by_name(name)
+		if item: 
+			return item
 		return {'message': 'item not found'}, 404	
 
 	# Error first 
 	def post(self, name):
-		if next(filter(lambda x: x['name'] == name, items), None):
-			return {'message': "An item with that name '{}' already exists.".format(name)}, 400
+		if self.find_by_name(name):
+			return {'message': "An item with name '{}' already exists.".format(name)}, 400
 
 		data = Item.parser.parse_args()
 
-		item = {'name': name, 'price': data['price']}
-		items.append(item)
+		item = {'name' : name, 'price': data['price']}
+		
+		connection = sqlite3.connect('data.db')
+		cursor = connection.cursor()
+
+		query = "INSERT INTO items VALUES (?, ?)"
+		cursor.execute(query, (item))
 		return item, 201
 
 	def delete(self, name):
@@ -53,6 +51,16 @@ class Item(Resource):
 		else: 
 			item.update(data)
 		return item
+
+	@classmethod
+	def find_by_name(cls, name):
+		connection = sqlite3.connect('data.db')
+		cursor = connection.cursor()
+
+		query = "SELECT * FROM items WHERE name=?"
+		result = cursor.execute(query, (name,))
+		row = result.fetchone()
+		connection.close()
 
 class ItemList(Resource):
 	def get(self):
