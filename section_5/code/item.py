@@ -15,7 +15,7 @@ class Item(Resource):
 		item = self.find_by_name(name)
 		if item: 
 			return item
-		return {'message': 'item not found'}, 404	
+		return {'message': 'Item not found'}, 404	
 
 	# Error first 
 	def post(self, name):
@@ -26,31 +26,54 @@ class Item(Resource):
 
 		item = {'name' : name, 'price': data['price']}
 		
-		connection = sqlite3.connect('data.db')
-		cursor = connection.cursor()
+		try:
+			self.insert(item)
+		except:
+			return {"message": "An error occurred inserting the item."}, 500 # Internal server error
 
-		query = "INSERT INTO items VALUES (?, ?)"
-		cursor.execute(query, (item))
 		return item, 201
 
 	def delete(self, name):
-		global items
-		# the DB items = result of lambda -> loop through items add every entry where item's name is not = to the name passed in 
-		items = list(filter(lambda x: x['name'] != name, items))
+		connection = sqlite3.connect('data.db')
+		cursor = connection.cursor()
+
+		query = "DELETE FROM items WHERE name=?"
+		cursor.execute(query, (name, ))
+
+		connection.commit()
+		connection.close()
+
 		return {'message': 'Item deleted'}
 
 	# The API will not accept any other argument besides price even if they exist inside payload
 	def put(self, name):
-		
 		data = Item.parser.parse_args()
 
-		item = next(filter(lambda x: x['name'] == name, items), None)
+		item = self.find_by_name(name)
+		updated_item = {'name': name, 'price': data['price']}
+
 		if item is None:
-			item = {'name': name, 'price': data['price']}
-			items.append(item)
+			try:
+				self.insert(updated_item)
+			except: 
+				return {"message": "An error occured inserting the item"}, 500
 		else: 
-			item.update(data)
-		return item
+			try:
+				self.update(updated_item)
+			except:
+				return {"message": "An error occured updating the item"}, 500
+		return updated_item
+
+	@classmethod
+	def update(cls, item): 
+		connection = sqlite3.connect('data.db')
+		cursor = connection.cursor()
+
+		query = "UPDATE items SET price=? WHERE name=?"
+		result = cursor.execute(query, (item['price'], item['name']))
+		
+		connection.commit()
+		connection.close()
 
 	@classmethod
 	def find_by_name(cls, name):
@@ -61,8 +84,37 @@ class Item(Resource):
 		result = cursor.execute(query, (name,))
 		row = result.fetchone()
 		connection.close()
+		
+		if row:
+			return {'item': {'name': row[0], 'price': row[1]}}
+
+	@classmethod
+	def insert(cls, item):
+		connection = sqlite3.connect('data.db')
+		cursor = connection.cursor()
+
+		query = "INSERT INTO items VALUES (?, ?)"
+		cursor.execute(query, (item['name'], item['price']))
+
+		connection.commit()
+		connection.close()
+
 
 class ItemList(Resource):
+	# Return every row in our DB in json format 
 	def get(self):
+		connection = sqlite3.connect('data.db')
+		cursor = connection.cursor()
+
+		query = "SELECT * FROM items"
+		result = cursor.execute(query)
+		
+		items = []
+
+		for row in result:
+			items.append({'name': row[0], 'price': row[1]})
+
+		connection.close()
+
 		return {'items': items}
 
